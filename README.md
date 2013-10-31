@@ -1,4 +1,4 @@
 sshnas
 ======
 
-multi-threaded SSH drive network automation script
+multi-threaded SSH driven network automation script
