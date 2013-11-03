@@ -92,7 +92,7 @@ def main(thread_count,logfile,hosts_file,commands_file,username,password):
 	commands = open(commands_file)
 	account = Account(username, password)
 	
-	print "Starting sshNAS..."
+	print "[*] Starting sshNAS..."
 	outfile.write("Starting sshNAS...\n")
 	q = Queue.Queue()
 	for host in hosts:
@@ -109,8 +109,8 @@ def main(thread_count,logfile,hosts_file,commands_file,username,password):
 	# Wait for all threads to finish before moving on
 	[x.join() for x in threads]
 	
-	print "Completed (%s\%s) with (%s\%s) failures" % (count,host_count, error_count,host_count)
-	print "sshNAS complete!"
+	print "[*] Completed (%s\%s)\n\tSuccessful (%s\%s)\n\tFailed (%s\%s)" % (count,host_count, success_count,host_count,error_count,host_count)
+	print "[*] sshNAS complete!"
 
 # Start	here
 if __name__ == "__main__":		
