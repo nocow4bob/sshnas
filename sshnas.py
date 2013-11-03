@@ -35,7 +35,7 @@ def do_commands(host,commands_file,account):
     	print " [-] %s - Starting commands" % host.rstrip()
 	outfile.write(" [-] %s - Starting commands\n" %host.rstrip())
 	for command in commands:
-		print "[D] - %s" % command
+		#print "[D] - %s" % command
 		try:
 			conn.execute(command)              
         	except:
