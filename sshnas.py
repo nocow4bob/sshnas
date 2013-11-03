@@ -14,7 +14,13 @@ from Exscript.util.start import quickstart
 from optparse import OptionParser
 
 
-def do_migration(host):
+def do_commands(host,commands_file,account):
+	try:
+		commands=open(commands_file)
+	except:
+		print "[!] %s - Error opening commands file" %host.rstrip()
+		outfile.write("[!] %s - Error opening commands file" %host.rstrip())
+
 	try:
 		print "[*] %s - Connecting" % host.rstrip()
         	outfile.write("[*] %s - Connecting\n" % host.rstrip())
@@ -26,135 +32,55 @@ def do_migration(host):
                 outfile.write("[!] %s - Error connecting for migration\n" %host.rstrip())
 		return
 
-    	print " [-] %s - Starting migration" % host.rstrip()
-	outfile.write(" [-] %s - Starting migration\n" %host.rstrip())
-	try:
-		conn.execute('wri')              
-        	outfile.write(" [-] %s - Wri complete\n" % host.rstrip())
-		conn.execute('wri')
-		conn.execute('reload in 15 \r')
-		outfile.write(" [-] %s - Reload-in command complete\n" % host.rstrip())
-        	conn.execute('conf t')
-        	conn.execute('int tun 0')
-        	conn.execute('shut')
-		outfile.write(" [-] %s - Tunnel Shut complete\n" % host.rstrip())
-		#print conn.response
-        	conn.send('exit\r')
-		print "[**] %s - Migration complete" % host.rstrip()
-        	outfile.write("[**] %s - Migration complete\n" % host.rstrip()) 
-	except:
-		print "[!] %s - Error: did not finish migration" % host.rstrip()
-		outfile.write("[!] %s - Error: did not finish migration\n" % host.rstrip())
+    	print " [-] %s - Starting commands" % host.rstrip()
+	outfile.write(" [-] %s - Starting commands\n" %host.rstrip())
+	for command in commands:
+		print "[D] - %s" % command
+		try:
+			conn.execute(command)              
+        	except:
+			print "[!] %s - Error: did not finish command %s" % (host.rstrip(),command)
+               		outfile.write("[!] %s - Error: did not finish command %s\n" % (host.rstrip(), command))
+		outfile.write(" [-] %s - %s complete\n" % (host.rstrip(),command))
+	print "[**] %s - Commands complete" % host.rstrip()
+        outfile.write("[**] %s - Commands complete\n" % host.rstrip()) 
+	conn.close()
 
-def do_cancel(host):
-	try:
-        	print "[*] %s - Connecting" % host.rstrip()
-        	outfile.write("[*] %s - Connecting\n" % host.rstrip())
-        	conn = SSH2(timeout=10)
-       		conn.connect(host.rstrip())
-        	conn.login(account)
-	except:
-                print "[!] %s - Error connecting for migration" %host.rstrip()
-                outfile.write("[!] %s - Error connecting for migration\n" %host.rstrip())
-		return
-
-	print " [-] %s - Cancelling reload" % host.rstrip()
-	outfile.write(" [-] %s - Cancelling reload\n" % host.rstrip())
-	try:
-		conn.execute('reload cancel')
-		outfile.write("[**] %s - Reload cancelled\n" % host.rstrip())
-		print "[**] %s - Reload cancelled" % host.rstrip()
-		conn.send('exit\r')
-	except:
-		print "[!] %s - Error: reload cancel did not finish" % host.rstrip()
-		outfile.write("[!] %s - Error: reload cancel did not finish\n" % host.rstrip())
-
-def worker(queue, option):
+# Worker function for threads
+def worker(queue, commands_file, account):
 	queue_full = True
 	while queue_full:
 		try:
 			host = queue.get(False)
-			if option == 'm':
-				do_migration(host)
-			elif option == 'c':
-				do_cancel(host)
-			else:
-				print "[X] Invalid option for thread worker"
-				outfile.write("[X] Invalid option for thread worker")
+			do_commands(host,commands_file,account)
 		except Queue.Empty:
             		queue_full = False
+
 # Main function
-def main(threads,logfile,hosts_file,commands,username,password):
+def main(thread_count,logfile,hosts_file,commands_file,username,password):
 	global outfile
 	hosts = open(hosts_file) 
 	outfile = open(logfile,'w')
+	commands = open(commands_file)
 	account = Account(username, password)
-	option = raw_input("migrate (m) or cancel reloads (c): ")
- 
-	if option == 'm':
-		print "\nStarting migrations..."
-		outfile.write("\nStarting migrations...\n")
-		q = Queue.Queue()
-		for host in hosts:
-			q.put(host)
 	
-		threads = []
-		thread_count = 10
-		for i in range(thread_count):
-    			t = threading.Thread(target=worker, args = (q,option,))
-    			threads.append(t)
-		# Start all threads
-		[x.start() for x in threads]
-		# Wait for all threads to finish before moving on
-		[x.join() for x in threads]
+	#option = raw_input("migrate (m) or cancel reloads (c): ") 
+	print "\nStarting sshNAS..."
+	outfile.write("\nStarting sshNAS...\n")
+	q = Queue.Queue()
+	for host in hosts:
+		q.put(host)
 	
+	threads = []
+	for i in range(thread_count):
+    		t = threading.Thread(target=worker, args=(q,commands_file,account,))
+    		threads.append(t)
+	# Start all threads
+	[x.start() for x in threads]
+	# Wait for all threads to finish before moving on
+	[x.join() for x in threads]
 	
-		print ""
-		cancel = raw_input("Would you like to cancel the reloads? ")
-		if cancel == 'y':
-			hosts = open(sys.argv[1])
-			print "\nCancelling reloads..."
-			outfile.write("\nCancelling reloads...\n")
-			q = Queue.Queue()
-			for host in hosts:
-				q.put(host)
-			threads = []
-			thread_count = 10
-			for i in range(thread_count):
-                		t = threading.Thread(target=worker, args = (q,'c',))
-        			threads.append(t)        	
-
-			# Start all threads
-        		[x.start() for x in threads]
-        		# Wait for all threads to finish before moving on
-        		[x.join() for x in threads]
-	
-		else:
-			print "Migration complete"
-
-	elif option == 'c':
-		hosts = open(sys.argv[1])
-        	print "\nCancelling reloads..."
-		outfile.write("\nCancelling reloads...\n")
-        	q = Queue.Queue()
-		for host in hosts:
-			q.put(host)
-        	
-		threads = []
-		thread_count = 10
-		for i in range(thread_count):
-        		t = threading.Thread(target=worker, args = (q,option,))
-                	threads.append(t)
-
-		# Start all threads
-        	[x.start() for x in threads]
-        	# Wait for all threads to finish before moving on
-        	[x.join() for x in threads]	
-	else:
-		print "[!] Not a valid option"
-
-	print ""
-
+	print "\nsshNAS complete!"
 
 # Start	here
 if __name__ == "__main__":		
