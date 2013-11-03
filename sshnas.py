@@ -55,7 +55,7 @@ def do_commands(host,commands_file,account):
         outfile.write("[**] %s - Commands complete\n" % host.rstrip()) 
 
 # Worker function for threads
-def worker(queue, commands_file, account):
+def worker(queue, commands_file, account, thread_count):
 	global count
 	global host_count
 	global error_count
@@ -68,7 +68,7 @@ def worker(queue, commands_file, account):
 			count = count + 1
 			if count == 1:
                 		print "[*] Progress (%s\%s)" % (count,host_count)
-			elif count % 50 == 0:
+			elif count % thread_count == 0:
 				print "[*] Progress (%s\%s)" % (count,host_count)
 				print "\tSuccessful (%s\%s)" % (success_count,host_count)
 				print "\tFailed (%s\%s)" % (error_count,host_count)
@@ -82,6 +82,7 @@ def main(thread_count,logfile,hosts_file,commands_file,username,password):
 	global host_count
 	global error_count
 	global success_count
+	
 	count = 0
 	host_count = 0
 	error_count = 0	
@@ -100,7 +101,7 @@ def main(thread_count,logfile,hosts_file,commands_file,username,password):
 	
 	threads = []
 	for i in range(thread_count):
-    		t = threading.Thread(target=worker, args=(q,commands_file,account,))
+    		t = threading.Thread(target=worker, args=(q,commands_file,account,thread_count,))
     		threads.append(t)
 	
 	# Start all threads
