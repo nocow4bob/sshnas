@@ -11,7 +11,6 @@ from Exscript.protocols import SSH2
 from Exscript import Host, Account
 from Exscript.util.file  import get_hosts_from_file
 from Exscript.util.start import quickstart
-from optparse import OptionParser
 
 
 def do_commands(host,commands_file,account):
@@ -28,23 +27,23 @@ def do_commands(host,commands_file,account):
         	conn.connect(host.rstrip())
         	conn.login(account)
 	except:
-        	print "[!] %s - Error connecting for migration" %host.rstrip()
-                outfile.write("[!] %s - Error connecting for migration\n" %host.rstrip())
+        	print "[!] %s - Error connecting" %host.rstrip()
+                outfile.write("[!] %s - Error connecting\n" %host.rstrip())
 		return
 
     	print " [-] %s - Starting commands" % host.rstrip()
 	outfile.write(" [-] %s - Starting commands\n" %host.rstrip())
 	for command in commands:
-		#print "[D] - %s" % command
 		try:
 			conn.execute(command)              
-        	except:
-			print "[!] %s - Error: did not finish command %s" % (host.rstrip(),command)
-               		outfile.write("[!] %s - Error: did not finish command %s\n" % (host.rstrip(), command))
-		outfile.write(" [-] %s - %s complete\n" % (host.rstrip(),command))
+        		#print conn.response
+		except:
+			print "[!] %s - Error: did not finish command %s" % (host.rstrip(),command.rstrip())
+               		outfile.write("[!] %s - Error: did not finish command %s\n" % (host.rstrip(), command.rstrip()))
+		outfile.write(" [-] %s - %s complete\n" % (host.rstrip(),command.rstrip()))
+	conn.send('exit\r')
 	print "[**] %s - Commands complete" % host.rstrip()
         outfile.write("[**] %s - Commands complete\n" % host.rstrip()) 
-	conn.close()
 
 # Worker function for threads
 def worker(queue, commands_file, account):
@@ -85,8 +84,8 @@ def main(thread_count,logfile,hosts_file,commands_file,username,password):
 # Start	here
 if __name__ == "__main__":		
 	parser = argparse.ArgumentParser(version="%prog 1.0",description="A multi-threaded SSH network automation script")
-        parser.add_argument('hosts', help='Hosts file', metavar='HOSTS_FILE')
-	parser.add_argument('commands', help='Commands file', metavar='COMMANDS_FILE')
+        parser.add_argument('hosts', help='Hosts file (one host per line)', metavar='HOSTS_FILE')
+	parser.add_argument('commands', help='Commands file (one command per line)', metavar='COMMANDS_FILE')
         parser.add_argument("-l", "--log-file", dest='logfile', help="logfile name", metavar="LOGFILE", default="sshnas.log")
 	parser.add_argument("-t", "--threads", dest='threads', help="number of threads (1-100)", type=int, metavar='THREADS', default=10)
 	parser.add_argument("-u", "--username", dest='username', help='Username for SSH login', metavar='USERNAME', default='admin')
